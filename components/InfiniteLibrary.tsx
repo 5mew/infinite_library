@@ -1,9 +1,33 @@
 import React, { useState } from 'react';
 import { Book, Sparkles, User, Heart, Globe, Clock, Download, Star } from 'lucide-react';
 
+interface UserProfile {
+  name: string;
+  age: string;
+  interests: string[];
+  readingLevel: string;
+  preferredGenre: string;
+  personalityTraits: string[];
+  currentMood: string;
+  location: string;
+  personalChallenges: string[];
+}
+
+interface GeneratedBook {
+  title: string;
+  author: string;
+  genre: string;
+  premise: string;
+  themes: string[];
+  personalizedElements: string[];
+  chapters: string[];
+  estimatedLength: string;
+  readingTime: string;
+}
+
 const InfiniteLibrary = () => {
-  const [currentStep, setCurrentStep] = useState('welcome');
-  const [userProfile, setUserProfile] = useState({
+  const [currentStep, setCurrentStep] = useState<string>('welcome');
+  const [userProfile, setUserProfile] = useState<UserProfile>({
     name: '',
     age: '',
     interests: [],
@@ -14,50 +38,53 @@ const InfiniteLibrary = () => {
     location: '',
     personalChallenges: []
   });
-  const [generatedBook, setGeneratedBook] = useState(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState(0);
-  const [generationError, setGenerationError] = useState('');
+  const [generatedBook, setGeneratedBook] = useState<GeneratedBook | null>(null);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [generationProgress, setGenerationProgress] = useState<number>(0);
+  const [generationError, setGenerationError] = useState<string>('');
 
-  const interests = [
+  const interests: string[] = [
     'Technology', 'Nature', 'Adventure', 'Mystery', 'Romance', 'Science',
     'History', 'Art', 'Music', 'Sports', 'Travel', 'Cooking', 'Animals',
     'Space', 'Magic', 'Friendship', 'Family', 'Career', 'Health'
   ];
 
-  const personalityTraits = [
+  const personalityTraits: string[] = [
     'Adventurous', 'Analytical', 'Creative', 'Empathetic', 'Humorous',
     'Introverted', 'Optimistic', 'Practical', 'Curious', 'Ambitious',
     'Compassionate', 'Independent', 'Thoughtful', 'Energetic'
   ];
 
-  const personalChallenges = [
+  const personalChallenges: string[] = [
     'Building confidence', 'Career transition', 'Relationship issues',
     'Stress management', 'Finding purpose', 'Overcoming fear',
     'Work-life balance', 'Health goals', 'Financial planning',
     'Personal growth', 'Communication skills', 'Time management'
   ];
 
-  const genres = [
+  const genres: string[] = [
     'Mystery/Thriller', 'Romance', 'Science Fiction', 'Fantasy',
     'Self-Help', 'Adventure', 'Historical Fiction', 'Contemporary Fiction',
     'Educational', 'Children\'s Story', 'Biography/Memoir', 'Comedy'
   ];
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: keyof UserProfile, value: string) => {
     setUserProfile(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleArrayToggle = (field, item) => {
-    setUserProfile(prev => ({
-      ...prev,
-      [field]: prev[field].includes(item) 
-        ? prev[field].filter(i => i !== item)
-        : [...prev[field], item]
-    }));
+  const handleArrayToggle = (field: keyof UserProfile, item: string) => {
+    setUserProfile(prev => {
+      const currentArray = prev[field] as string[];
+      return {
+        ...prev,
+        [field]: currentArray.includes(item) 
+          ? currentArray.filter(i => i !== item)
+          : [...currentArray, item]
+      };
+    });
   };
 
   const generatePersonalizedBook = async () => {
@@ -89,14 +116,14 @@ const InfiniteLibrary = () => {
       setCurrentStep('generated');
       
       // Track successful generation
-      if (typeof window !== 'undefined' && window.gtag) {
-        window.gtag('event', 'book_generated', {
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'book_generated', {
           event_category: 'engagement',
           event_label: userProfile.preferredGenre,
           value: 1
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Book generation error:', error);
       setGenerationError(error.message || 'Something went wrong during book generation. Please try again.');
       setCurrentStep('profile');
@@ -106,9 +133,9 @@ const InfiniteLibrary = () => {
     }
   };
 
-  const createPersonalizedContent = (profile) => {
+  const createPersonalizedContent = (profile: UserProfile): GeneratedBook => {
     // AI-like content generation logic (this would integrate with actual AI APIs)
-    const bookTemplates = {
+    const bookTemplates: Record<string, any> = {
       'Mystery/Thriller': {
         title: `The ${profile.location || 'Hidden'} Conspiracy`,
         premise: `A ${profile.personalityTraits.includes('Analytical') ? 'methodical detective' : 'curious amateur sleuth'} in ${profile.location || 'a small town'} discovers a web of secrets that threatens everything they hold dear.`,
@@ -445,101 +472,105 @@ const InfiniteLibrary = () => {
         <p className="text-gray-600">A unique story created specifically for you</p>
       </div>
 
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-8 rounded-2xl">
-        <div className="flex items-start gap-6">
-          <div className="bg-white/20 p-4 rounded-lg">
-            <Book className="w-12 h-12" />
-          </div>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-2">{generatedBook.title}</h1>
-            <p className="text-lg mb-1">by {generatedBook.author}</p>
-            <p className="text-purple-200 mb-4">{generatedBook.genre}</p>
-            <p className="text-lg leading-relaxed">{generatedBook.premise}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-xl shadow-lg border">
-          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Star className="w-5 h-5 text-yellow-500" />
-            Personalized For You
-          </h3>
-          <ul className="space-y-2">
-            {generatedBook.personalizedElements.map((element, index) => (
-              <li key={index} className="flex items-start gap-2 text-gray-700">
-                <div className="w-2 h-2 bg-purple-600 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-sm">{element}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-lg border">
-          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-green-500" />
-            Book Details
-          </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Length:</span>
-              <span className="font-medium">{generatedBook.estimatedLength}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Reading Time:</span>
-              <span className="font-medium">{generatedBook.readingTime}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Chapters:</span>
-              <span className="font-medium">{generatedBook.chapters.length}</span>
+      {generatedBook && (
+        <>
+          <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-8 rounded-2xl">
+            <div className="flex items-start gap-6">
+              <div className="bg-white/20 p-4 rounded-lg">
+                <Book className="w-12 h-12" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold mb-2">{generatedBook.title}</h1>
+                <p className="text-lg mb-1">by {generatedBook.author}</p>
+                <p className="text-purple-200 mb-4">{generatedBook.genre}</p>
+                <p className="text-lg leading-relaxed">{generatedBook.premise}</p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-lg border">
-        <h3 className="text-xl font-semibold mb-4">Chapter Outline</h3>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {generatedBook.chapters.map((chapter, index) => (
-            <div key={index} className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900">{chapter}</h4>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-white p-6 rounded-xl shadow-lg border">
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Star className="w-5 h-5 text-yellow-500" />
+                Personalized For You
+              </h3>
+              <ul className="space-y-2">
+                {generatedBook.personalizedElements.map((element, index) => (
+                  <li key={index} className="flex items-start gap-2 text-gray-700">
+                    <div className="w-2 h-2 bg-purple-600 rounded-full mt-2 flex-shrink-0"></div>
+                    <span className="text-sm">{element}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          ))}
-        </div>
-      </div>
 
-      <div className="bg-gray-50 p-6 rounded-xl">
-        <h3 className="text-xl font-semibold mb-4">Core Themes</h3>
-        <div className="flex flex-wrap gap-2">
-          {generatedBook.themes.map((theme, index) => (
-            <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-              {theme}
-            </span>
-          ))}
-        </div>
-      </div>
+            <div className="bg-white p-6 rounded-xl shadow-lg border">
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-green-500" />
+                Book Details
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Length:</span>
+                  <span className="font-medium">{generatedBook.estimatedLength}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Reading Time:</span>
+                  <span className="font-medium">{generatedBook.readingTime}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Chapters:</span>
+                  <span className="font-medium">{generatedBook.chapters.length}</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button className="bg-purple-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
-          <Download className="w-5 h-5" />
-          Download Digital Book ($19.99)
-        </button>
-        <button className="bg-white text-purple-600 border-2 border-purple-600 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-purple-50 transition-colors">
-          Order Physical Copy ($39.99)
-        </button>
-      </div>
+          <div className="bg-white p-6 rounded-xl shadow-lg border">
+            <h3 className="text-xl font-semibold mb-4">Chapter Outline</h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {generatedBook.chapters.map((chapter, index) => (
+                <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium text-gray-900">{chapter}</h4>
+                </div>
+              ))}
+            </div>
+          </div>
 
-      <div className="text-center">
-        <button 
-          onClick={() => {
-            setCurrentStep('profile');
-            setGeneratedBook(null);
-          }}
-          className="text-purple-600 hover:text-purple-700 font-medium"
-        >
-          Create Another Book
-        </button>
-      </div>
+          <div className="bg-gray-50 p-6 rounded-xl">
+            <h3 className="text-xl font-semibold mb-4">Core Themes</h3>
+            <div className="flex flex-wrap gap-2">
+              {generatedBook.themes.map((theme, index) => (
+                <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                  {theme}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button className="bg-purple-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+              <Download className="w-5 h-5" />
+              Download Digital Book ($19.99)
+            </button>
+            <button className="bg-white text-purple-600 border-2 border-purple-600 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-purple-50 transition-colors">
+              Order Physical Copy ($39.99)
+            </button>
+          </div>
+
+          <div className="text-center">
+            <button 
+              onClick={() => {
+                setCurrentStep('profile');
+                setGeneratedBook(null);
+              }}
+              className="text-purple-600 hover:text-purple-700 font-medium"
+            >
+              Create Another Book
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 

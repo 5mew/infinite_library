@@ -43,9 +43,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Validate input
     if (!profile.name || !profile.preferredGenre || !profile.interests?.length) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: name, preferredGenre, and interests are required' 
+      });
+    }
+
+    // Generate book with retries
+    const book = await generateBookWithRetries(profile, 3);
+    
+    // Log successful generation for analytics
+    console.log(`Book generated successfully for ${profile.name}, genre: ${profile.preferredGenre}`);
+    
+    return res.status(200).json(book);
+    
+  } catch (error: any) {
+    console.error('Book generation error:', error);
+    
+    if (error.message?.includes('rate limit')) {
+      return res.status(429).json({ error: 'AI service rate limit exceeded. Please try again in a few moments.' });
+    }
+    
+    if (error.message?.includes('content policy')) {
+      return res.status(400).json({ error: 'Content failed safety checks. Please try different preferences.' });
+    }
+    
+    return res.status(500).json({ 
+      error: 'Book generation failed. Please try again.' 
+    });
+  }
+}
+
+async function generateBookWithRetries(profile: UserProfile, maxRetries: number): Promise<GeneratedBook> {
+  let lastError: any;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Generation attempt ${attempt} for ${profile.name}`);
+      
+      const book = await generateBook(profile);
+      
+      // Quality check
+      const qualityScore = await assessBookQuality(book);
+      book.qualityScore = qualityScore;
+      
+      if (qualityScore < 0.6 && attempt < maxRetries) {
+        console.log(`Quality score ${qualityScore} too low, retrying...`);
+        continue;
+      }
+      
       return book;
       
-    } catch (error) {
+    } catch (error: any) {
       lastError = error;
       console.error(`Attempt ${attempt} failed:`, error.message);
       
@@ -116,7 +164,7 @@ Key requirements:
     
     return book;
     
-  } catch (error) {
+  } catch (error: any) {
     if (error.code === 'rate_limit_exceeded') {
       throw new Error('AI service rate limit exceeded');
     }
@@ -253,52 +301,4 @@ async function assessBookQuality(book: GeneratedBook): Promise<number> {
     console.error('Quality assessment failed:', error);
     return 0.7; // Default acceptable score
   }
-} res.status(400).json({ 
-        error: 'Missing required fields: name, preferredGenre, and interests are required' 
-      });
-    }
-
-    // Generate book with retries
-    const book = await generateBookWithRetries(profile, 3);
-    
-    // Log successful generation for analytics
-    console.log(`Book generated successfully for ${profile.name}, genre: ${profile.preferredGenre}`);
-    
-    return res.status(200).json(book);
-    
-  } catch (error) {
-    console.error('Book generation error:', error);
-    
-    if (error.message?.includes('rate limit')) {
-      return res.status(429).json({ error: 'AI service rate limit exceeded. Please try again in a few moments.' });
-    }
-    
-    if (error.message?.includes('content policy')) {
-      return res.status(400).json({ error: 'Content failed safety checks. Please try different preferences.' });
-    }
-    
-    return res.status(500).json({ 
-      error: 'Book generation failed. Please try again.' 
-    });
-  }
 }
-
-async function generateBookWithRetries(profile: UserProfile, maxRetries: number): Promise<GeneratedBook> {
-  let lastError: Error;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`Generation attempt ${attempt} for ${profile.name}`);
-      
-      const book = await generateBook(profile);
-      
-      // Quality check
-      const qualityScore = await assessBookQuality(book);
-      book.qualityScore = qualityScore;
-      
-      if (qualityScore < 0.6 && attempt < maxRetries) {
-        console.log(`Quality score ${qualityScore} too low, retrying...`);
-        continue;
-      }
-      
-      return

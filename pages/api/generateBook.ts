@@ -1,10 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 
+// Debug all environment variables
+console.log('=== ENVIRONMENT DEBUG ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('VERCEL_ENV:', process.env.VERCEL_ENV);
+console.log('All env keys:', Object.keys(process.env).filter(key => key.includes('OPENROUTER') || key.includes('API')));
+
 // Check if API key exists
 const apiKey = process.env.OPENROUTER_API_KEY;
 console.log('OpenRouter API Key exists:', !!apiKey);
-console.log('API Key preview:', apiKey ? `${apiKey.substring(0, 7)}...` : 'MISSING');
+console.log('API Key length:', apiKey?.length || 0);
+console.log('API Key starts with:', apiKey ? apiKey.substring(0, 10) + '...' : 'MISSING');
 
 // Configure OpenAI client to use OpenRouter
 const openai = apiKey ? new OpenAI({
@@ -16,6 +23,8 @@ const openai = apiKey ? new OpenAI({
   },
   timeout: 60000 // 60 second timeout for OpenRouter
 }) : null;
+
+console.log('OpenAI client created:', !!openai);
 
 // Types
 type UserProfile = {
@@ -37,29 +46,41 @@ type GeneratedBook = {
   premise: string;
   themes: string[];
   personalizedElements: string[];
-  chapters: string[]; // Changed to string[] instead of object[]
+  chapters: string[];
   estimatedLength: string;
   readingTime: string;
   generationId: string;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log('=== API REQUEST DEBUG ===');
+  console.log('Method:', req.method);
+  console.log('Headers:', req.headers);
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Debug: Check API key
+  // Debug: Check API key again in handler
+  console.log('API Key in handler:', !!apiKey);
+  
   if (!apiKey) {
     console.error('OPENROUTER_API_KEY environment variable is missing');
     return res.status(500).json({ 
-      error: 'OpenRouter API key not configured. Please add OPENROUTER_API_KEY to environment variables.' 
+      error: 'OpenRouter API key not configured. Please add OPENROUTER_API_KEY to environment variables.',
+      debug: {
+        hasApiKey: !!apiKey,
+        envKeys: Object.keys(process.env).filter(key => key.includes('API')),
+        nodeEnv: process.env.NODE_ENV
+      }
     });
   }
 
   if (!openai) {
     console.error('OpenRouter client not initialized');
     return res.status(500).json({ 
-      error: 'OpenRouter client initialization failed' 
+      error: 'OpenRouter client initialization failed',
+      debug: { hasApiKey: !!apiKey, clientCreated: !!openai }
     });
   }
 
@@ -75,9 +96,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log('Starting book generation with OpenRouter...');
+    console.log('Using API key:', apiKey.substring(0, 10) + '...');
     
-    // Generate book with retries
-    const book = await generateBookWithRetries(profile, 3);
+    // Test API connection first
+    const testResult = await testOpenRouterConnection();
+    if (!testResult.success) {
+      return res.status(500).json({
+        error: 'OpenRouter API test failed: ' + testResult.error,
+        debug: testResult.debug
+      });
+    }
+    
+    // Generate book
+    const book = await generateSimpleBook(profile);
     
     console.log('Book generated successfully:', book.title);
     
@@ -85,111 +116,110 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
   } catch (error: any) {
     console.error('Full error details:', error);
+    console.error('Error stack:', error.stack);
+    
+    if (error.message?.includes('401') || error.message?.includes('auth')) {
+      return res.status(401).json({ 
+        error: 'OpenRouter authentication failed. Check your API key.',
+        debug: {
+          hasApiKey: !!apiKey,
+          keyLength: apiKey?.length,
+          keyPreview: apiKey?.substring(0, 10) + '...',
+          errorMessage: error.message
+        }
+      });
+    }
     
     if (error.message?.includes('rate limit') || error.message?.includes('quota')) {
       return res.status(429).json({ error: 'API rate limit exceeded. Please try again in a few moments.' });
     }
     
-    if (error.message?.includes('insufficient_quota') || error.message?.includes('balance')) {
-      return res.status(402).json({ error: 'Insufficient OpenRouter credits. Please add credits to your account.' });
-    }
-    
-    if (error.message?.includes('content policy') || error.message?.includes('safety')) {
-      return res.status(400).json({ error: 'Content failed safety checks. Please try different preferences.' });
-    }
-
-    if (error.message?.includes('API key') || error.message?.includes('authentication')) {
-      return res.status(500).json({ error: 'OpenRouter API key issue: ' + error.message });
-    }
-    
     return res.status(500).json({ 
-      error: 'Book generation failed: ' + error.message
+      error: 'Book generation failed: ' + error.message,
+      debug: {
+        hasApiKey: !!apiKey,
+        hasClient: !!openai,
+        errorType: error.constructor.name,
+        errorMessage: error.message
+      }
     });
   }
 }
 
-async function generateBookWithRetries(profile: UserProfile, maxRetries: number): Promise<GeneratedBook> {
-  let lastError: any;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`Generation attempt ${attempt} for ${profile.name}`);
-      
-      const book = await generateBook(profile);
-      
-      // Quality check
-      const qualityScore = await assessBookQuality(book);
-      
-      if (qualityScore < 0.6 && attempt < maxRetries) {
-        console.log(`Quality score ${qualityScore} too low, retrying...`);
-        continue;
-      }
-      
-      return book;
-      
-    } catch (error: any) {
-      lastError = error;
-      console.error(`Attempt ${attempt} failed:`, error.message);
-      
-      if (attempt === maxRetries) {
-        throw lastError;
-      }
-      
-      // Exponential backoff
-      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-    }
+async function testOpenRouterConnection(): Promise<{ success: boolean; error?: string; debug?: any }> {
+  if (!openai) {
+    return { success: false, error: 'OpenAI client not available' };
   }
-  
-  throw lastError;
+
+  try {
+    console.log('Testing OpenRouter connection...');
+    
+    // Simple test call to verify API key works
+    const response = await openai.chat.completions.create({
+      model: 'google/gemini-flash-1.5',
+      messages: [{ role: 'user', content: 'Say "test successful"' }],
+      max_tokens: 10
+    });
+
+    console.log('OpenRouter test successful');
+    return { success: true };
+    
+  } catch (error: any) {
+    console.error('OpenRouter test failed:', error);
+    return { 
+      success: false, 
+      error: error.message,
+      debug: {
+        status: error.status,
+        code: error.code,
+        type: error.type
+      }
+    };
+  }
 }
 
-async function generateBook(profile: UserProfile): Promise<GeneratedBook> {
+async function generateSimpleBook(profile: UserProfile): Promise<GeneratedBook> {
   if (!openai) {
     throw new Error('OpenRouter client not available');
   }
 
-  console.log('Calling OpenRouter API...');
+  console.log('Calling OpenRouter API for book generation...');
 
-  const prompt = buildAdvancedPrompt(profile);
+  const prompt = `Create a personalized ${profile.preferredGenre} book for ${profile.name}. 
+
+Respond with JSON only:
+{
+  "title": "Book title",
+  "author": "AI Author",
+  "genre": "${profile.preferredGenre}",
+  "premise": "2-3 sentence story premise",
+  "themes": ["theme1", "theme2", "theme3"],
+  "personalizedElements": ["element1", "element2", "element3"],
+  "chapters": ["Chapter 1", "Chapter 2", "Chapter 3"],
+  "estimatedLength": "15,000 words",
+  "readingTime": "45-60 minutes"
+}
+
+Make it personal to ${profile.name} who likes ${profile.interests.join(', ')}.`;
 
   try {
     const completion = await openai.chat.completions.create({
-      // Choose the best model for your needs and budget:
-      // Free models:
-      model: 'google/gemini-flash-1.5', // Free, good quality
-      // model: 'meta-llama/llama-3.1-8b-instruct:free', // Alternative free option
-      
-      // Paid models (higher quality):
-      // model: 'anthropic/claude-3-sonnet', // Excellent for creative writing
-      // model: 'openai/gpt-4o-mini', // Good balance of cost/quality
-      // model: 'openai/gpt-4o', // Highest quality
-      
-      temperature: 0.8,
-      max_tokens: 4096,
-      presence_penalty: 0.1,
-      frequency_penalty: 0.1,
+      model: 'google/gemini-flash-1.5', // Free model
+      temperature: 0.7,
+      max_tokens: 2000,
       messages: [
         {
           role: 'system',
-          content: `You are an award-winning novelist and personalization expert. Create deeply engaging, personalized stories that resonate with the reader's specific traits, challenges, and interests.
-
-Key requirements:
-- Respond ONLY with valid JSON matching the requested schema
-- Ensure all content is appropriate and safe
-- Make the story genuinely personal and relevant
-- Use rich, engaging language appropriate to the reading level
-- Include subtle life lessons and growth themes`
+          content: 'You are a novelist. Respond only with valid JSON.'
         },
         { role: 'user', content: prompt }
       ]
     });
 
     const rawContent = completion.choices[0].message?.content ?? '{}';
-    
-    console.log('OpenRouter response received');
-    console.log('Raw content preview:', rawContent.substring(0, 200));
+    console.log('OpenRouter response received, length:', rawContent.length);
 
-    // Clean up response (remove markdown if present)
+    // Clean up response
     let cleanContent = rawContent;
     if (cleanContent.includes('```json')) {
       cleanContent = cleanContent.replace(/```json\s*/g, '').replace(/```\s*/g, '');
@@ -198,156 +228,42 @@ Key requirements:
       cleanContent = cleanContent.replace(/```/g, '');
     }
 
-    // Parse and validate JSON
-    let book: any; // Use any first to handle flexible parsing
+    // Parse JSON
+    let book: any;
     try {
       book = JSON.parse(cleanContent.trim());
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      console.error('Raw content that failed to parse:', cleanContent);
       throw new Error('Invalid JSON response from AI model');
     }
     
-    // Add generation metadata
+    // Add required fields
     book.generationId = `gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Validate required fields
-    if (!book.title || !book.premise) {
-      throw new Error('Generated book missing required fields');
-    }
-
-    // Ensure chapters is an array of strings (handle different formats)
-    if (book.chapters && Array.isArray(book.chapters)) {
-      if (book.chapters.length > 0 && typeof book.chapters[0] === 'object') {
-        // Convert {title: "...", summary: "..."} to just title strings
-        book.chapters = book.chapters.map((ch: any, index: number) => 
-          typeof ch === 'object' ? (ch.title || `Chapter ${index + 1}`) : ch
-        );
-      }
-      // Ensure all chapters are strings
-      book.chapters = book.chapters.map((ch: any, index: number) => 
-        typeof ch === 'string' ? ch : `Chapter ${index + 1}`
-      );
-    } else {
-      // Create default chapters as strings
-      book.chapters = [
-        'Chapter 1: The Beginning',
-        'Chapter 2: Discovery', 
-        'Chapter 3: Challenge',
-        'Chapter 4: Growth',
-        'Chapter 5: Resolution'
-      ];
-    }
-
-    // Ensure other required fields have defaults
-    if (!book.themes || !Array.isArray(book.themes)) {
-      book.themes = ['growth', 'discovery', 'journey'];
-    }
-    
-    if (!book.personalizedElements || !Array.isArray(book.personalizedElements)) {
-      book.personalizedElements = [
-        `Story crafted for ${profile.name}`,
-        `Incorporates your love of ${profile.interests[0] || 'adventure'}`,
-        `Reflects your ${profile.personalityTraits[0] || 'unique'} personality`
-      ];
-    }
-
-    if (!book.estimatedLength) {
-      book.estimatedLength = '15,000 words';
-    }
-
-    if (!book.readingTime) {
-      book.readingTime = '45-60 minutes';
-    }
-
-    if (!book.author) {
-      book.author = `AI Author (Personalized for ${profile.name})`;
-    }
-
-    if (!book.genre) {
-      book.genre = profile.preferredGenre;
-    }
+    // Ensure required fields exist
+    if (!book.title) book.title = `A Story for ${profile.name}`;
+    if (!book.author) book.author = `AI Author (for ${profile.name})`;
+    if (!book.genre) book.genre = profile.preferredGenre;
+    if (!book.premise) book.premise = `A personalized story crafted especially for ${profile.name}.`;
+    if (!book.themes) book.themes = ['adventure', 'growth', 'discovery'];
+    if (!book.personalizedElements) book.personalizedElements = [`Written for ${profile.name}`, 'Incorporates your interests', 'Matches your personality'];
+    if (!book.chapters) book.chapters = ['Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'Chapter 5'];
+    if (!book.estimatedLength) book.estimatedLength = '15,000 words';
+    if (!book.readingTime) book.readingTime = '45-60 minutes';
     
     console.log('Book parsed successfully:', book.title);
     
-    // Return as properly typed GeneratedBook
     return book as GeneratedBook;
     
   } catch (error: any) {
     console.error('OpenRouter API error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      status: error.status,
+      code: error.code,
+      type: error.type
+    });
     
-    if (error.code === 'rate_limit_exceeded' || error.message?.includes('rate limit')) {
-      throw new Error('OpenRouter API rate limit exceeded');
-    }
-    
-    if (error.code === 'invalid_api_key' || error.message?.includes('authentication')) {
-      throw new Error('Invalid OpenRouter API key');
-    }
-
-    if (error.message?.includes('insufficient_quota') || error.message?.includes('balance')) {
-      throw new Error('Insufficient OpenRouter credits');
-    }
-
-    if (error.message?.includes('content_filter') || error.message?.includes('safety')) {
-      throw new Error('Content blocked by safety filters');
-    }
-    
-    throw new Error('OpenRouter API call failed: ' + error.message);
+    throw error;
   }
-}
-
-function buildAdvancedPrompt(profile: UserProfile): string {
-  return `Create a personalized ${profile.preferredGenre.toLowerCase()} book as JSON with this exact structure:
-
-{
-  "title": "string",
-  "author": "string", 
-  "genre": "string",
-  "premise": "string (2-3 sentences)",
-  "themes": ["string array of 3-5 core themes"],
-  "personalizedElements": ["string array of 5-7 specific personalizations"],
-  "chapters": [
-    "Chapter 1: Title",
-    "Chapter 2: Title", 
-    "Chapter 3: Title"
-  ],
-  "estimatedLength": "string (e.g., '15,000 words')",
-  "readingTime": "string (e.g., '45-60 minutes')"
-}
-
-PERSONALIZATION PROFILE:
-Name: ${profile.name}
-Age: ${profile.age}
-Location: ${profile.location}
-Interests: ${profile.interests.join(', ')}
-Personality: ${profile.personalityTraits.join(', ')}
-Current Mood: ${profile.currentMood}
-Life Focus: ${profile.personalChallenges.join(', ')}
-Reading Level: ${profile.readingLevel}
-
-Create 5-7 chapters with engaging titles. Make the story feel specifically written for ${profile.name}. Include their interests (${profile.interests.slice(0, 4).join(', ')}) and personality traits (${profile.personalityTraits.slice(0, 3).join(', ')}).
-
-OUTPUT VALID JSON ONLY - NO MARKDOWN, NO CODE FENCES.`;
-}
-
-async function assessBookQuality(book: GeneratedBook): Promise<number> {
-  // Simple quality scoring without additional API calls
-  let score = 0.5; // Base score
-  
-  // Check title quality
-  if (book.title && book.title.length > 5 && !book.title.includes('undefined')) score += 0.1;
-  
-  // Check premise quality
-  if (book.premise && book.premise.length > 50) score += 0.1;
-  
-  // Check themes
-  if (book.themes && book.themes.length >= 3) score += 0.1;
-  
-  // Check personalized elements
-  if (book.personalizedElements && book.personalizedElements.length >= 3) score += 0.1;
-  
-  // Check chapters
-  if (book.chapters && book.chapters.length >= 3) score += 0.1;
-  
-  return Math.min(1.0, score);
 }

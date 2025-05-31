@@ -300,7 +300,6 @@ body {
 }
 /* Reading Experience Styles */
 .reading-content {
-  /* Paper-like background */
   background: linear-gradient(135deg, #fefefe 0%, #fafafa 100%);
   box-shadow: 
     0 4px 6px rgba(0,0,0,0.05),
@@ -309,7 +308,6 @@ body {
 }
 
 .chapter-title {
-  /* Decorative chapter styling */
   position: relative;
   padding-bottom: 1rem;
   margin-bottom: 2rem;
@@ -328,7 +326,6 @@ body {
 }
 
 .chapter-text {
-  /* Optimized reading typography */
   line-height: 1.8;
   text-align: justify;
   hyphens: auto;
@@ -337,7 +334,6 @@ body {
 }
 
 .chapter-text p:first-letter {
-  /* Drop cap effect */
   float: left;
   font-size: 3.5em;
   line-height: 0.8;
@@ -352,32 +348,6 @@ body {
   color: var(--burgundy);
 }
 
-/* Reading progress indicator */
-.reading-progress {
-  background: linear-gradient(90deg, var(--purple-primary), var(--blue-accent));
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
-/* Chapter navigation dots */
-.chapter-nav-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-}
-
-.chapter-nav-dot.active {
-  background: var(--purple-primary);
-  transform: scale(1.2);
-}
-
-.chapter-nav-dot.inactive {
-  background: var(--parchment);
-  border: 2px solid var(--purple-primary);
-}
-
-/* Responsive reading adjustments */
 @media (max-width: 768px) {
   .chapter-text {
     font-size: 1.1rem;
@@ -387,39 +357,4 @@ body {
   .chapter-text p:first-letter {
     font-size: 3em;
   }
-}
-
-/* Print-friendly styles */
-@media print {
-  .reading-content {
-    background: white;
-    box-shadow: none;
-  }
-  
-  .chapter-title::after {
-    background: #333;
-  }
-}
-
-/* Dark mode support (future enhancement) */
-@media (prefers-color-scheme: dark) {
-  .reading-content {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-    color: #e5e5e5;
-  }
-  
-  .chapter-text {
-    color: #d1d1d1;
-  }
-}
-
-/* Smooth scrolling for chapter navigation */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Enhanced focus states for accessibility */
-.reading-nav-button:focus {
-  outline: 2px solid var(--purple-primary);
-  outline-offset: 2px;
 }

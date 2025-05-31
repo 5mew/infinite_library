@@ -37,7 +37,7 @@ type GeneratedBook = {
   premise: string;
   themes: string[];
   personalizedElements: string[];
-  chapters: { title: string; summary: string }[];
+  chapters: string[]; // Changed to string[] instead of object[]
   estimatedLength: string;
   readingTime: string;
   generationId: string;
@@ -199,7 +199,7 @@ Key requirements:
     }
 
     // Parse and validate JSON
-    let book: GeneratedBook;
+    let book: any; // Use any first to handle flexible parsing
     try {
       book = JSON.parse(cleanContent.trim());
     } catch (parseError) {
@@ -220,17 +220,58 @@ Key requirements:
     if (book.chapters && Array.isArray(book.chapters)) {
       if (book.chapters.length > 0 && typeof book.chapters[0] === 'object') {
         // Convert {title: "...", summary: "..."} to just title strings
-        book.chapters = book.chapters.map((ch: any) => 
-          typeof ch === 'object' ? ch.title || `Chapter ${book.chapters.indexOf(ch) + 1}` : ch
+        book.chapters = book.chapters.map((ch: any, index: number) => 
+          typeof ch === 'object' ? (ch.title || `Chapter ${index + 1}`) : ch
         );
       }
+      // Ensure all chapters are strings
+      book.chapters = book.chapters.map((ch: any, index: number) => 
+        typeof ch === 'string' ? ch : `Chapter ${index + 1}`
+      );
     } else {
-      book.chapters = ['Chapter 1: The Beginning', 'Chapter 2: Discovery', 'Chapter 3: Challenge', 'Chapter 4: Growth', 'Chapter 5: Resolution'];
+      // Create default chapters as strings
+      book.chapters = [
+        'Chapter 1: The Beginning',
+        'Chapter 2: Discovery', 
+        'Chapter 3: Challenge',
+        'Chapter 4: Growth',
+        'Chapter 5: Resolution'
+      ];
+    }
+
+    // Ensure other required fields have defaults
+    if (!book.themes || !Array.isArray(book.themes)) {
+      book.themes = ['growth', 'discovery', 'journey'];
+    }
+    
+    if (!book.personalizedElements || !Array.isArray(book.personalizedElements)) {
+      book.personalizedElements = [
+        `Story crafted for ${profile.name}`,
+        `Incorporates your love of ${profile.interests[0] || 'adventure'}`,
+        `Reflects your ${profile.personalityTraits[0] || 'unique'} personality`
+      ];
+    }
+
+    if (!book.estimatedLength) {
+      book.estimatedLength = '15,000 words';
+    }
+
+    if (!book.readingTime) {
+      book.readingTime = '45-60 minutes';
+    }
+
+    if (!book.author) {
+      book.author = `AI Author (Personalized for ${profile.name})`;
+    }
+
+    if (!book.genre) {
+      book.genre = profile.preferredGenre;
     }
     
     console.log('Book parsed successfully:', book.title);
     
-    return book;
+    // Return as properly typed GeneratedBook
+    return book as GeneratedBook;
     
   } catch (error: any) {
     console.error('OpenRouter API error:', error);
@@ -256,9 +297,6 @@ Key requirements:
 }
 
 function buildAdvancedPrompt(profile: UserProfile): string {
-  const personalityInsights = analyzePersonality(profile);
-  const narrativeStyle = determineNarrativeStyle(profile);
-  
   return `Create a personalized ${profile.preferredGenre.toLowerCase()} book as JSON with this exact structure:
 
 {
@@ -269,7 +307,9 @@ function buildAdvancedPrompt(profile: UserProfile): string {
   "themes": ["string array of 3-5 core themes"],
   "personalizedElements": ["string array of 5-7 specific personalizations"],
   "chapters": [
-    {"title": "string", "summary": "string (1-2 sentences)"}
+    "Chapter 1: Title",
+    "Chapter 2: Title", 
+    "Chapter 3: Title"
   ],
   "estimatedLength": "string (e.g., '15,000 words')",
   "readingTime": "string (e.g., '45-60 minutes')"
@@ -285,83 +325,9 @@ Current Mood: ${profile.currentMood}
 Life Focus: ${profile.personalChallenges.join(', ')}
 Reading Level: ${profile.readingLevel}
 
-PERSONALITY INSIGHTS:
-${personalityInsights}
-
-NARRATIVE REQUIREMENTS:
-- Reading level: ${profile.readingLevel || 'casual'} (adjust vocabulary and complexity accordingly)
-- Mood alignment: ${profile.currentMood} (reflect this in tone and pacing)
-- Location integration: ${profile.location ? `Incorporate ${profile.location} setting elements` : 'Use relatable settings'}
-- Challenge focus: ${profile.personalChallenges.length ? `Address these life areas: ${profile.personalChallenges.slice(0, 2).join(', ')}` : 'Focus on universal growth themes'}
-
-STYLE GUIDE:
-${narrativeStyle}
-
-Create 5-7 chapters with compelling titles and summaries. Make the story feel specifically written for ${profile.name} - not generic. Include subtle references to their interests (${profile.interests.slice(0, 4).join(', ')}) and personality traits (${profile.personalityTraits.slice(0, 3).join(', ')}).
-
-The personalizedElements array should list specific ways this book is customized for them.
+Create 5-7 chapters with engaging titles. Make the story feel specifically written for ${profile.name}. Include their interests (${profile.interests.slice(0, 4).join(', ')}) and personality traits (${profile.personalityTraits.slice(0, 3).join(', ')}).
 
 OUTPUT VALID JSON ONLY - NO MARKDOWN, NO CODE FENCES.`;
-}
-
-function analyzePersonality(profile: UserProfile): string {
-  const traits = profile.personalityTraits;
-  let analysis = "Personality analysis: ";
-  
-  if (traits.includes('Analytical')) {
-    analysis += "Appreciates logical plot development and detailed world-building. ";
-  }
-  if (traits.includes('Creative')) {
-    analysis += "Enjoys vivid imagery and innovative storytelling approaches. ";
-  }
-  if (traits.includes('Empathetic')) {
-    analysis += "Connects with emotional character development and relationship dynamics. ";
-  }
-  if (traits.includes('Adventurous')) {
-    analysis += "Prefers active plots with exploration and new experiences. ";
-  }
-  if (traits.includes('Introverted')) {
-    analysis += "Values internal character reflection and quiet moments of growth. ";
-  }
-  
-  return analysis;
-}
-
-function determineNarrativeStyle(profile: UserProfile): string {
-  const level = profile.readingLevel;
-  const mood = profile.currentMood;
-  const genre = profile.preferredGenre;
-  
-  let style = "";
-  
-  // Reading level adjustments
-  if (level === 'casual') {
-    style += "Use accessible language, shorter sentences, and clear narrative flow. ";
-  } else if (level === 'advanced') {
-    style += "Employ sophisticated vocabulary, complex sentence structures, and literary devices. ";
-  } else {
-    style += "Balance engaging language with moderate complexity. ";
-  }
-  
-  // Mood-based tone
-  if (mood === 'optimistic') {
-    style += "Maintain an uplifting tone with hopeful outcomes. ";
-  } else if (mood === 'contemplative') {
-    style += "Include thoughtful moments and philosophical elements. ";
-  } else if (mood === 'adventurous') {
-    style += "Emphasize action, discovery, and exciting plot developments. ";
-  }
-  
-  // Genre-specific elements
-  if (genre?.includes('Mystery')) {
-    style += "Build suspense gradually with clever clues and red herrings. ";
-  } else if (genre?.includes('Romance')) {
-    style += "Focus on emotional connection and relationship development. ";
-  } else if (genre?.includes('Self-Help')) {
-    style += "Include practical insights and actionable advice woven into narrative. ";
-  }
-  
-  return style;
 }
 
 async function assessBookQuality(book: GeneratedBook): Promise<number> {

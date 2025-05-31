@@ -298,3 +298,128 @@ body {
     display: none;
   }
 }
+/* Reading Experience Styles */
+.reading-content {
+  /* Paper-like background */
+  background: linear-gradient(135deg, #fefefe 0%, #fafafa 100%);
+  box-shadow: 
+    0 4px 6px rgba(0,0,0,0.05),
+    0 10px 15px rgba(0,0,0,0.1),
+    inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.chapter-title {
+  /* Decorative chapter styling */
+  position: relative;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+
+.chapter-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--purple-primary), var(--gold));
+  border-radius: 2px;
+}
+
+.chapter-text {
+  /* Optimized reading typography */
+  line-height: 1.8;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -ms-hyphens: auto;
+}
+
+.chapter-text p:first-letter {
+  /* Drop cap effect */
+  float: left;
+  font-size: 3.5em;
+  line-height: 0.8;
+  padding-right: 8px;
+  padding-top: 4px;
+  font-family: var(--font-display);
+  color: var(--purple-primary);
+}
+
+.chapter-text p:first-of-type:first-letter {
+  font-size: 4em;
+  color: var(--burgundy);
+}
+
+/* Reading progress indicator */
+.reading-progress {
+  background: linear-gradient(90deg, var(--purple-primary), var(--blue-accent));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Chapter navigation dots */
+.chapter-nav-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.chapter-nav-dot.active {
+  background: var(--purple-primary);
+  transform: scale(1.2);
+}
+
+.chapter-nav-dot.inactive {
+  background: var(--parchment);
+  border: 2px solid var(--purple-primary);
+}
+
+/* Responsive reading adjustments */
+@media (max-width: 768px) {
+  .chapter-text {
+    font-size: 1.1rem;
+    line-height: 1.7;
+  }
+  
+  .chapter-text p:first-letter {
+    font-size: 3em;
+  }
+}
+
+/* Print-friendly styles */
+@media print {
+  .reading-content {
+    background: white;
+    box-shadow: none;
+  }
+  
+  .chapter-title::after {
+    background: #333;
+  }
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  .reading-content {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    color: #e5e5e5;
+  }
+  
+  .chapter-text {
+    color: #d1d1d1;
+  }
+}
+
+/* Smooth scrolling for chapter navigation */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Enhanced focus states for accessibility */
+.reading-nav-button:focus {
+  outline: 2px solid var(--purple-primary);
+  outline-offset: 2px;
+}

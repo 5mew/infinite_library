@@ -1,4 +1,3 @@
-// utils/types.ts
 export interface UserProfile {
   name: string;
   age: string;

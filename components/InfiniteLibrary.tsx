@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Book as BookIcon, User, Logo } from 'lucide-react'; // Renamed Book icon to avoid conflict
+import { Book as BookIcon, User } from 'lucide-react';
 import AuthModal from './AuthModal';
 import type { UserProfile, Book as BookType, Chapter } from '../utils/types';
 import { useAuth } from '../hooks/useAuth';

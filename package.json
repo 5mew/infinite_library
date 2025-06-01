@@ -18,7 +18,7 @@
     "openai": "^4.20.1",
     "react": "^18",
     "react-dom": "^18",
-    "typescript": "^5"
+    "typescript": "^5",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "js-cookie": "^3.0.5",
@@ -29,7 +29,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.0.4",
     "postcss": "^8",
-    "tailwindcss": "^3.3.0"
+    "tailwindcss": "^3.3.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/js-cookie": "^3.0.6",

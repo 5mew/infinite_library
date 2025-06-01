@@ -11,7 +11,7 @@ Generating = 'generating',
 Generated = 'generated',
 }
 
-const InfiniteLibrary: React.FC = () => {
+const InfiniteLibrary = () => {
 const { user, requireAuth, logout } = useAuth();
 const [currentStep, setCurrentStep] = useState(Step.Welcome);
 const [isAuthModalOpen, setAuthModalOpen] = useState(false);
@@ -41,6 +41,7 @@ if (isGenerating) {
 timer = setInterval(() => {
 setGenerationProgress((prev) => Math.min(prev + 10, 100));
 }, 300);
+  return <div>Coming soon...</div>;
 }
 return () => clearInterval(timer);
 }, [isGenerating]);

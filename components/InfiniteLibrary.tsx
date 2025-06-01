@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Book, User, Logo } from 'lucide-react'; // Example icon imports
+import { Book as BookIcon, User, Logo } from 'lucide-react'; // Renamed Book icon to avoid conflict
 import AuthModal from './AuthModal';
 import type { UserProfile, Book as BookType, Chapter } from '../utils/types';
 import { useAuth } from '../hooks/useAuth';
@@ -137,6 +137,7 @@ onChange={(e) => setUserProfile({ ...userProfile, name: e.target.value })}
 className="w-full border p-2 rounded"
 />
 
+
 Age
 <input
 type="text"
@@ -144,6 +145,7 @@ value={userProfile.age}
 onChange={(e) => setUserProfile({ ...userProfile, age: e.target.value })}
 className="w-full border p-2 rounded"
 />
+
 
 Interests (comma separated)
 <input
@@ -157,6 +159,7 @@ interests: e.target.value.split(',').map((s) => s.trim()),
 }
 className="w-full border p-2 rounded"
 />
+
 
 Preferred Genre
 <select
@@ -196,6 +199,7 @@ personalityTraits: e.target.value.split(',').map((s) => s.trim()),
 className="w-full border p-2 rounded"
 />
 
+
 Current Mood
 <input
 type="text"
@@ -203,6 +207,7 @@ value={userProfile.currentMood}
 onChange={(e) => setUserProfile({ ...userProfile, currentMood: e.target.value })}
 className="w-full border p-2 rounded"
 />
+
 
 Personal Challenges (comma separated)
 <input
@@ -229,6 +234,7 @@ onClick={() => setCurrentStep(Step.Welcome)}
 disabled={isGenerating}
 >
 Back
+
 
 );
 
@@ -301,3 +307,4 @@ return renderWelcome();
 };
 
 export default InfiniteLibrary;
+

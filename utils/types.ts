@@ -1,6 +1,6 @@
 export interface UserProfile {
   name: string;
-  age: string;
+  age: number;             // Changed from string to number to match usage
   interests: string[];
   readingLevel: string;
   preferredGenre: string;

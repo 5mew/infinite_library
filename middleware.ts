@@ -1,38 +1,77 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { verifyToken } from './lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { verify } from 'jsonwebtoken';
 
-export function middleware(request: NextRequest) {
-  // Protect API routes that require authentication
-  if (request.nextUrl.pathname.startsWith('/api/generateBook') || 
-      request.nextUrl.pathname.startsWith('/api/generateFullBook')) {
-    
-    const token = request.cookies.get('auth-token')?.value;
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
 
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
 
-    // Add user info to request headers
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-user-id', decoded.userId);
-    requestHeaders.set('x-user-email', decoded.email);
-
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
-  }
-
-  return NextResponse.next();
+export async function middleware(req: NextRequest) {
+const token = req.cookies.get('auth-token')?.value;
+if (!token) {
+return new NextResponse(
+JSON.stringify({ message: 'Unauthorized' }),
+{ status: 401, headers: { 'Content-Type': 'application/json' } }
+);
+}
+try {
+const decoded = verify(token, process.env.JWT_SECRET!);
+req.headers.set('x-user-id', (decoded as { userId: string }).userId);
+req.headers.set('x-user-email', (decoded as { email: string }).email);
+return NextResponse.next();
+} catch (error) {
+return new NextResponse(
+JSON.stringify({ message: 'Invalid token' }),
+{ status: 401, headers: { 'Content-Type': 'application/json' } }
+);
+}
 }
 
 export const config = {
-  matcher: ['/api/generateBook', '/api/generateFullBook']
+matcher: ['/api/generateBook', '/api/generateFullBook'],
 };
+
+// pages/api/generateBook.ts
+import { NextApiRequest, NextApiResponse } from 'next';
+import { generateEnhancedBook } from '../../utils/bookGenerator';
+import { findUserById, saveUserBook } from '../../utils/userLibrary';
+import type { UserProfile, Book } from '../../utils/types';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+if (req.method !== 'POST') {
+res.setHeader('Allow', 'POST');
+return res.status(405).json({ message: 'Method Not Allowed' });
+}
+
+const userId = req.headers['x-user-id'] as string;
+if (!userId) {
+return res.status(401).json({ message: 'Unauthorized' });
+}
+
+const {
+name,
+age,
+interests,
+readingLevel,
+preferredGenre,
+personalityTraits,
+currentMood,
+personalChallenges,
+} = req.body as UserProfile;
+
+if (!name || !preferredGenre || (interests && interests.length === 0)) {
+return res
+.status(400)
+.json({ message: 'Name, preferred genre, and at least one interest are required.' });
+}
+
+const user = await findUserById(userId);
+if (!user) {
+return res.status(401).json({ message: 'Unauthorized' });
+}
+
+try {
+const book = await generateEnhancedBook(req.body as UserProfile);
+await saveUserBook(userId, book as Book);
+return res.status(200).json(book);
+} catch (error: any) {
+return res.status(500).json({ message: error.message || 'Error generating book.' });
+}
+}

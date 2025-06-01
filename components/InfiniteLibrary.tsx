@@ -1,4 +1,4 @@
-```tsx
+
 import React, { useState, useEffect } from 'react';
 import { Book as BookIcon, User } from 'lucide-react';
 import AuthModal from './AuthModal';
@@ -61,4 +61,3 @@ const InfiniteLibrary = () => {
 };
 
 export default InfiniteLibrary;
-```

@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import AuthModal from './AuthModal';
 
+
+
 // Enhanced interfaces
 interface AuthUser {
   id: string;
@@ -171,6 +173,7 @@ const InfiniteLibrary = () => {
       }));
     }
   }, [user]);
+
 
   const checkAuthStatus = async () => {
     try {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Book as BookIcon, User } from 'lucide-react';
 import AuthModal from './AuthModal';
@@ -51,7 +50,6 @@ const InfiniteLibrary = () => {
     }
   }, [user]);
 
-  // Placeholder return to satisfy React.FC requirements
   return (
     <div>
       <h1>Welcome to Infinite Library</h1>
